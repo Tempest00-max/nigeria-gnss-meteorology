@@ -1,0 +1,28 @@
+{
+  "models": [
+    {
+      "name": "Linear Regression",
+      "r2": 0.8873,
+      "rmse_k": 2.626,
+      "mae_k": 2.095,
+      "bias_k": 0.006
+    },
+    {
+      "name": "Random Forest",
+      "r2": 0.8929,
+      "rmse_k": 2.559,
+      "mae_k": 2.041,
+      "bias_k": -0.001
+    },
+    {
+      "name": "XGBoost",
+      "r2": 0.8942,
+      "rmse_k": 2.544,
+      "mae_k": 2.029,
+      "bias_k": 0.011
+    }
+  ],
+  "best_model": "XGBoost",
+  "training_period": "2020-2023",
+  "validation_period": "2024"
+}
