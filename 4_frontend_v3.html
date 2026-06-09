@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>NiMet-GNSS | Nigeria GNSS Meteorology System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0a0e1a',
+                            800: '#0f172a',
+                            700: '#1e293b',
+                            600: '#334155',
+                            500: '#475569',
+                            400: '#64748b',
+                            300: '#94a3b8',
+                            200: '#cbd5e1',
+                            100: '#e2e8f0',
+                        },
+                        cyan: { 400: '#22d3ee', 500: '#06b6d4', 600: '#0891b2' },
+                        emerald: { 400: '#34d399', 500: '#10b981', 600: '#059669' },
+                        violet: { 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed' },
+                        amber: { 400: '#fbbf24', 500: '#f59e0b' },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease; }
+
+        /* FIX: Ensure results are visible when shown */
+        #results:not(.hidden) {
+            display: block !important;
+        }
+        .station-marker { transition: transform 0.2s ease; }
+        .station-marker:hover { transform: scale(1.2) !important; }
+        .leaflet-popup-content-wrapper { background: #1e293b !important; color: #e2e8f0 !important; border-radius: 12px !important; border: 1px solid rgba(255,255,255,0.1) !important; }
+        .leaflet-popup-tip { background: #1e293b !important; }
+        .leaflet-popup-content { margin: 12px 16px !important; }
+        #chartjs-tooltip { opacity: 1; position: absolute; background: rgba(15, 23, 42, 0.95); color: white; border-radius: 8px; pointer-events: none; transform: translate(-50%, 0); transition: all .1s ease; border: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 1023px) {
+            #map { height: 50vh !important; min-height: 300px; }
+        }
+
+        /* FIX: Desktop sidebar always visible */
+        @media (min-width: 1024px) {
+            #sidebar {
+                position: relative !important;
+                transform: none !important;
+                height: 100%;
+            }
+            #sidebarOverlay {
+                display: none !important;
+            }
+        }
+        #nationalChartPanel {
+            width: 600px;
+            max-width: 95vw;
+            height: 520px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: none;
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+            margin: 0 auto;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            z-index: 1001;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        }
+        #nationalChartPanel.active { display: block; }
+        #nationalChartPanel .chart-header {
+            position: sticky;
+            top: 0;
+            background: rgba(10,14,26,0.98);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        #nationalChartPanel .chart-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+        #nationalChartPanel .chart-close {
+            background: rgba(239,68,68,0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #nationalChartPanel .chart-close:hover {
+            background: rgba(239,68,68,0.3);
+        }
+        @media (min-width: 1024px) {
+            #nationalChartPanel {
+                left: auto;
+                right: 16px;
+                width: 640px;
+            }
+        }
+        #compareModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        #compareModal.active {
+            display: flex;
+        }
+        #compareModal .modal-content {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+        }
+    </style>
+    <base target="_blank">
+<base target="_blank">
+<base target="_blank">
+</head>
+<body class="bg-dark-900 text-dark-100 h-screen overflow-hidden flex flex-col">
+
+    <header class="h-14 bg-dark-800/95 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 lg:px-6 shrink-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-lg shadow-lg shadow-cyan-500/20" aria-label="NiMet-GNSS Logo">🛰️</div>
+            <div>
+                <div class="text-sm lg:text-base font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent">NiMet-GNSS</div>
+                <div class="text-[10px] text-dark-400 hidden sm:block">Nigeria GNSS Meteorology System v4 — 37 Stations</div>
+            </div>
+        </div>
+        <button id="mobileMenuBtn" class="lg:hidden p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors" aria-label="Toggle menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+    </header>
+
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <aside id="sidebar" class="w-full lg:w-[400px] xl:w-[420px] bg-dark-800/95 border-r border-white/10 overflow-y-auto shrink-0 transition-transform duration-300 lg:translate-x-0 absolute lg:relative z-40 h-full -translate-x-full lg:translate-x-0">
+            <div class="p-4 lg:p-5">
+                <div class="flex gap-1 mb-4 border-b border-white/10 pb-2">
+                    <button onclick="switchTab('calc')" class="tab-btn active px-3 py-2 text-xs font-semibold rounded-lg transition-all" data-tab="calc">Calculator</button>
+                    <button onclick="switchTab('analysis')" class="tab-btn px-3 py-2 text-xs font-semibold rounded-lg transition-all text-dark-400 hover:text-dark-200" data-tab="analysis">Analysis</button>
+                    <button onclick="switchTab('settings')" class="tab-btn px-3 py-2 text-xs font-semibold rounded-lg transition-all text-dark-400 hover:text-dark-200" data-tab="settings">Settings</button>
+                </div>
+
+                <div id="tab-calc" class="tab-content block">
+                    <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4 mb-3">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                            <span>📍</span> Location & Time
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Station</label>
+                                <select id="stationSelect" onchange="onStationChange()" class="w-full px-3 py-2.5 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all cursor-pointer">
+                                    <option value="">-- Select Station --</option>
+                                    <option value="11.99,8.53,480">Kano — Kano State (North-West)</option>
+                                    <option value="12.00,8.08,520">Katsina — Katsina State (North-West)</option>
+                                    <option value="10.52,7.43,610">Kaduna — Kaduna State (North-West)</option>
+                                    <option value="12.74,10.97,450">Dutse — Jigawa State (North-West)</option>
+                                    <option value="11.07,7.72,230">Birnin Kebbi — Kebbi State (North-West)</option>
+                                    <option value="12.45,4.20,300">Sokoto — Sokoto State (North-West)</option>
+                                    <option value="12.00,6.78,460">Gusau — Zamfara State (North-West)</option>
+                                    <option value="11.75,13.15,300">Maiduguri — Borno State (North-East)</option>
+                                    <option value="11.85,13.15,360">Damaturu — Yobe State (North-East)</option>
+                                    <option value="10.30,9.75,590">Bauchi — Bauchi State (North-East)</option>
+                                    <option value="10.28,11.17,420">Gombe — Gombe State (North-East)</option>
+                                    <option value="10.60,12.18,190">Yola — Adamawa State (North-East)</option>
+                                    <option value="11.08,12.68,240">Jalingo — Taraba State (North-East)</option>
+                                    <option value="9.08,7.40,360" selected>Abuja — FCT (North-Central)</option>
+                                    <option value="9.08,5.12,260">Minna — Niger State (North-Central)</option>
+                                    <option value="8.12,9.68,180">Lafia — Nasarawa State (North-Central)</option>
+                                    <option value="7.72,8.52,100">Makurdi — Benue State (North-Central)</option>
+                                    <option value="7.80,6.73,40">Lokoja — Kogi State (North-Central)</option>
+                                    <option value="8.68,4.58,310">Ilorin — Kwara State (North-Central)</option>
+                                    <option value="9.93,8.88,1280">Jos — Plateau State (North-Central)</option>
+                                    <option value="6.45,3.40,15">Lagos — Lagos State (South-West)</option>
+                                    <option value="7.15,3.35,60">Abeokuta — Ogun State (South-West)</option>
+                                    <option value="7.38,3.93,120">Ibadan — Oyo State (South-West)</option>
+                                    <option value="7.60,5.22,450">Ado Ekiti — Ekiti State (South-West)</option>
+                                    <option value="7.80,4.58,350">Akure — Ondo State (South-West)</option>
+                                    <option value="7.78,4.55,300">Osogbo — Osun State (South-West)</option>
+                                    <option value="6.02,6.78,180">Enugu — Enugu State (South-East)</option>
+                                    <option value="6.18,6.73,70">Owerri — Imo State (South-East)</option>
+                                    <option value="5.38,7.00,130">Umuahia — Abia State (South-East)</option>
+                                    <option value="5.90,7.38,390">Abakaliki — Ebonyi State (South-East)</option>
+                                    <option value="6.02,7.50,100">Awka — Anambra State (South-East)</option>
+                                    <option value="5.02,7.93,12">Uyo — Akwa Ibom State (South-South)</option>
+                                    <option value="4.98,8.35,35">Calabar — Cross River State (South-South)</option>
+                                    <option value="4.77,7.02,6">Yenagoa — Bayelsa State (South-South)</option>
+                                    <option value="5.53,6.02,20">Port Harcourt — Rivers State (South-South)</option>
+                                    <option value="6.33,5.60,18">Asaba — Delta State (South-South)</option>
+                                    <option value="7.25,5.20,85">Benin City — Edo State (South-South)</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Latitude</label>
+                                    <input type="number" id="lat" value="9.08" step="0.01" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Longitude</label>
+                                    <input type="number" id="lon" value="7.40" step="0.01" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Elevation (m)</label>
+                                <input type="number" id="elev" value="360" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                            </div>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Year</label>
+                                    <input type="number" id="year" value="2024" min="2020" max="2024" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Month</label>
+                                    <input type="number" id="month" value="6" min="1" max="12" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Day</label>
+                                    <input type="number" id="day" value="8" min="1" max="31" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Hour (UTC)</label>
+                                <select id="hour" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all cursor-pointer">
+                                    <option value="0">00:00</option>
+                                    <option value="6">06:00</option>
+                                    <option value="12" selected>12:00</option>
+                                    <option value="18">18:00</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4 mb-3">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                            <span>🤖</span> Model Selection
+                        </div>
+                        <select id="modelSelect" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all cursor-pointer">
+                            <option value="random_forest" selected>Random Forest (Recommended)</option>
+                            <option value="linear">Linear Regression</option>
+                            <option value="xgboost">XGBoost</option>
+                        </select>
+                    </div>
+
+                    <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4 mb-3">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                            <span>🌡️</span> Meteorological Inputs
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Ts (K)</label>
+                                <input type="number" id="ts" placeholder="Auto" step="0.1" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm placeholder-dark-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">Ps (hPa)</label>
+                                <input type="number" id="ps" placeholder="Auto" step="0.1" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm placeholder-dark-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">RH (%)</label>
+                                <input type="number" id="rhs" placeholder="Auto" step="0.1" min="0" max="100" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm placeholder-dark-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4 mb-3">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                            <span>📡</span> GNSS Zenith Wet Delay
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">ZWD (mm) — from GNSS processing</label>
+                            <input type="number" id="zwd" placeholder="Leave blank to auto-compute" step="0.1" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm placeholder-dark-500 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 mb-3">
+                        <button onclick="calculateZTD()" class="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold text-sm rounded-xl shadow-lg shadow-cyan-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2" aria-label="Calculate ZTD and PWV">
+                            <span>🚀</span> Calculate ZTD & PWV
+                        </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="showTimeSeries()" class="py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-semibold text-sm rounded-xl border border-emerald-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2" aria-label="Show time series">
+                                <span>📈</span> Time Series
+                            </button>
+                            <button onclick="compareModels()" class="py-2.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 font-semibold text-sm rounded-xl border border-violet-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2" aria-label="Compare models">
+                                <span>⚖️</span> Compare
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="showNationalSummary()" class="py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-semibold text-sm rounded-xl border border-amber-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2" aria-label="Show national summary">
+                                <span>🗺️</span> National Summary
+                            </button>
+                            <button onclick="downloadResults()" class="py-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-semibold text-sm rounded-xl border border-blue-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2" aria-label="Download results">
+                                <span>📥</span> Download Results
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="results" class="hidden">
+                        <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4 mb-3 text-center">
+                            <div class="flex items-center justify-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-2">
+                                <span>🎯</span> Nigeria Model Tm
+                            </div>
+                            <div class="text-4xl font-extrabold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent" id="tmModel">--</div>
+                            <div class="text-xs text-dark-400 mt-1">Kelvin</div>
+                            <span id="modelBadge" class="inline-block mt-2 px-2.5 py-1 rounded-md text-[10px] font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">Random Forest</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 mb-3">
+                            <div class="bg-dark-800/50 border border-white/5 rounded-xl p-3 text-center">
+                                <div class="text-xl font-bold text-cyan-400" id="zhdValue">--</div>
+                                <div class="text-[9px] text-dark-400 uppercase mt-1">ZHD (mm)</div>
+                            </div>
+                            <div class="bg-dark-800/50 border border-white/5 rounded-xl p-3 text-center">
+                                <div class="text-xl font-bold text-cyan-400" id="zwdValue">--</div>
+                                <div class="text-[9px] text-dark-400 uppercase mt-1">ZWD (mm)</div>
+                            </div>
+                            <div class="bg-dark-800/50 border border-white/5 rounded-xl p-3 text-center">
+                                <div class="text-xl font-bold text-cyan-400" id="ztdValue">--</div>
+                                <div class="text-[9px] text-dark-400 uppercase mt-1">ZTD (mm)</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-emerald-600 to-emerald-500 rounded-xl p-5 text-center mb-3 shadow-lg shadow-emerald-500/20">
+                            <div class="text-4xl font-extrabold text-white" id="pwvValue">--</div>
+                            <div class="text-sm text-emerald-100 mt-1">Precipitable Water Vapor (mm)</div>
+                        </div>
+
+                        <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4 mb-3">
+                            <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                                <span>📊</span> Model Comparison
+                            </div>
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-white/10">
+                                        <th class="text-left py-2 text-[10px] text-dark-400 uppercase font-semibold">Model</th>
+                                        <th class="text-left py-2 text-[10px] text-dark-400 uppercase font-semibold">Tm (K)</th>
+                                        <th class="text-left py-2 text-[10px] text-dark-400 uppercase font-semibold">Diff (K)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-dark-200">
+                                    <tr class="border-b border-white/5">
+                                        <td class="py-2"><span id="compOursBadge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">Nigeria</span></td>
+                                        <td class="py-2" id="compOurs">--</td>
+                                        <td class="py-2">--</td>
+                                    </tr>
+                                    <tr class="border-b border-white/5">
+                                        <td class="py-2"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Bevis</span></td>
+                                        <td class="py-2" id="compBevis">--</td>
+                                        <td class="py-2 text-emerald-400 font-semibold" id="diffBevis">--</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-violet-500/15 text-violet-400 border border-violet-500/30">GPT3</span></td>
+                                        <td class="py-2" id="compGpt3">--</td>
+                                        <td class="py-2 text-emerald-400 font-semibold" id="diffGpt3">--</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4">
+                            <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-2">
+                                <span>📋</span> Input Summary
+                            </div>
+                            <div id="inputSummary" class="text-xs text-dark-400 leading-relaxed"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-analysis" class="tab-content hidden">
+                    <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4 mb-3">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                            <span>📊</span> Validation Statistics
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="bg-dark-800/50 border border-white/5 rounded-xl p-3 text-center">
+                                <div class="text-xl font-bold text-emerald-400">0.90</div>
+                                <div class="text-[9px] text-dark-400 uppercase mt-1">R² Score</div>
+                            </div>
+                            <div class="bg-dark-800/50 border border-white/5 rounded-xl p-3 text-center">
+                                <div class="text-xl font-bold text-cyan-400">2.02</div>
+                                <div class="text-[9px] text-dark-400 uppercase mt-1">RMSE (K)</div>
+                            </div>
+                            <div class="bg-dark-800/50 border border-white/5 rounded-xl p-3 text-center">
+                                <div class="text-xl font-bold text-violet-400">1.61</div>
+                                <div class="text-[9px] text-dark-400 uppercase mt-1">MAE (K)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                            <span>🏆</span> Model Performance
+                        </div>
+                        <div class="space-y-2 text-sm text-dark-300">
+                            <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                <span>Linear Regression</span>
+                                <span class="text-cyan-400 font-semibold">RMSE: 2.015 K</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                <span>Random Forest</span>
+                                <span class="text-emerald-400 font-semibold">RMSE: 1.987 K [BEST]</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1.5 border-b border-white/5">
+                                <span>XGBoost</span>
+                                <span class="text-violet-400 font-semibold">RMSE: 2.003 K</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1.5">
+                                <span>Bevis Model</span>
+                                <span class="text-amber-400 font-semibold">RMSE: 21.121 K</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-settings" class="tab-content hidden">
+                    <div class="bg-dark-700/50 border border-white/10 rounded-xl p-4">
+                        <div class="flex items-center gap-2 text-xs font-semibold text-dark-300 uppercase tracking-wider mb-3">
+                            <span>⚙️</span> API Configuration
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-[10px] font-semibold text-dark-400 uppercase tracking-wider mb-1.5">API Base URL</label>
+                            <input type="text" id="apiBase" value="http://localhost:8000" class="w-full px-3 py-2 bg-dark-800 border border-white/10 rounded-lg text-dark-100 text-sm focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all">
+                        </div>
+                        <button onclick="testConnection()" class="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-semibold text-sm rounded-xl border border-emerald-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2" aria-label="Test API connection">
+                            <span>🔗</span> Test Connection
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden" onclick="closeSidebar()"></div>
+
+        <div class="flex-1 relative min-h-0">
+            <div id="map" class="w-full h-full"></div>
+
+            <div id="chartPanel" class="hidden absolute bottom-4 left-4 right-4 lg:right-4 lg:left-auto lg:w-[480px] h-[260px] bg-dark-800/95 backdrop-blur-xl border border-white/10 rounded-xl p-4 z-[1002] shadow-2xl">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-sm font-semibold">📈 Annual Tm, ZTD & PWV Variation (2024)</div>
+                    <button onclick="closeChart()" class="p-1 hover:bg-white/10 rounded-lg transition-colors text-dark-400 hover:text-dark-200" aria-label="Close chart">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="h-[200px]">
+                    <canvas id="tmChart"></canvas>
+                </div>
+            </div>
+
+            <div id="nationalChartPanel">
+                <div class="chart-header">
+                    <div class="chart-title">🗺️ National Tm & PWV Summary — All 37 Stations</div>
+                    <button class="chart-close" onclick="closeNationalChart()">✕</button>
+                </div>
+                <div style="padding: 12px 16px;">
+                    <div style="height: 280px;">
+                        <canvas id="nationalChart"></canvas>
+                    </div>
+                    <div id="nationalStationTable" style="margin-top: 12px; max-height: 150px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="compareModal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-white">⚖️ Model Comparison Results</h3>
+                <button onclick="closeCompareModal()" class="p-1 hover:bg-white/10 rounded-lg transition-colors text-dark-400 hover:text-white" aria-label="Close comparison">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="compareModalBody" class="text-sm text-dark-200 space-y-3"></div>
+        </div>
+    </div>
+
+    <div id="loading" class="hidden fixed inset-0 bg-dark-900/90 backdrop-blur-sm z-[3000] flex flex-col items-center justify-center gap-4">
+        <div class="w-10 h-10 border-[3px] border-white/10 border-t-cyan-400 rounded-full spinner"></div>
+        <div class="text-dark-300 text-sm">Computing...</div>
+    </div>
+
+    <div id="error" class="hidden fixed top-20 right-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 z-[3000] text-red-300 text-sm max-w-xs shadow-lg">
+        ⚠️ <span id="errorText"></span>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let tmChart = null;
+        let nationalChart = null;
+        let map = null;
+        let sidebarOpen = false;
+
+        const stations = [
+            {name:"Kano",lat:11.99,lon:8.53,elev:480,state:"Kano",zone:"North-West"},
+            {name:"Katsina",lat:12.00,lon:8.08,elev:520,state:"Katsina",zone:"North-West"},
+            {name:"Kaduna",lat:10.52,lon:7.43,elev:610,state:"Kaduna",zone:"North-West"},
+            {name:"Dutse",lat:12.74,lon:10.97,elev:450,state:"Jigawa",zone:"North-West"},
+            {name:"Birnin_Kebbi",lat:11.07,lon:7.72,elev:230,state:"Kebbi",zone:"North-West"},
+            {name:"Sokoto",lat:12.45,lon:4.20,elev:300,state:"Sokoto",zone:"North-West"},
+            {name:"Gusau",lat:12.00,lon:6.78,elev:460,state:"Zamfara",zone:"North-West"},
+            {name:"Maiduguri",lat:11.75,lon:13.15,elev:300,state:"Borno",zone:"North-East"},
+            {name:"Damaturu",lat:11.85,lon:13.15,elev:360,state:"Yobe",zone:"North-East"},
+            {name:"Bauchi",lat:10.30,lon:9.75,elev:590,state:"Bauchi",zone:"North-East"},
+            {name:"Gombe",lat:10.28,lon:11.17,elev:420,state:"Gombe",zone:"North-East"},
+            {name:"Yola",lat:10.60,lon:12.18,elev:190,state:"Adamawa",zone:"North-East"},
+            {name:"Jalingo",lat:11.08,lon:12.68,elev:240,state:"Taraba",zone:"North-East"},
+            {name:"Abuja",lat:9.08,lon:7.40,elev:360,state:"FCT",zone:"North-Central"},
+            {name:"Minna",lat:9.08,lon:5.12,elev:260,state:"Niger",zone:"North-Central"},
+            {name:"Lafia",lat:8.12,lon:9.68,elev:180,state:"Nasarawa",zone:"North-Central"},
+            {name:"Makurdi",lat:7.72,lon:8.52,elev:100,state:"Benue",zone:"North-Central"},
+            {name:"Lokoja",lat:7.80,lon:6.73,elev:40,state:"Kogi",zone:"North-Central"},
+            {name:"Ilorin",lat:8.68,lon:4.58,elev:310,state:"Kwara",zone:"North-Central"},
+            {name:"Jos",lat:9.93,lon:8.88,elev:1280,state:"Plateau",zone:"North-Central"},
+            {name:"Lagos",lat:6.45,lon:3.40,elev:15,state:"Lagos",zone:"South-West"},
+            {name:"Abeokuta",lat:7.15,lon:3.35,elev:60,state:"Ogun",zone:"South-West"},
+            {name:"Ibadan",lat:7.38,lon:3.93,elev:120,state:"Oyo",zone:"South-West"},
+            {name:"Ado_Ekiti",lat:7.60,lon:5.22,elev:450,state:"Ekiti",zone:"South-West"},
+            {name:"Akure",lat:7.80,lon:4.58,elev:350,state:"Ondo",zone:"South-West"},
+            {name:"Osogbo",lat:7.78,lon:4.55,elev:300,state:"Osun",zone:"South-West"},
+            {name:"Enugu",lat:6.02,lon:6.78,elev:180,state:"Enugu",zone:"South-East"},
+            {name:"Owerri",lat:6.18,lon:6.73,elev:70,state:"Imo",zone:"South-East"},
+            {name:"Umuahia",lat:5.38,lon:7.00,elev:130,state:"Abia",zone:"South-East"},
+            {name:"Abakaliki",lat:5.90,lon:7.38,elev:390,state:"Ebonyi",zone:"South-East"},
+            {name:"Awka",lat:6.02,lon:7.50,elev:100,state:"Anambra",zone:"South-East"},
+            {name:"Uyo",lat:5.02,lon:7.93,elev:12,state:"Akwa Ibom",zone:"South-South"},
+            {name:"Calabar",lat:4.98,lon:8.35,elev:35,state:"Cross River",zone:"South-South"},
+            {name:"Yenagoa",lat:4.77,lon:7.02,elev:6,state:"Bayelsa",zone:"South-South"},
+            {name:"Port_Harcourt",lat:5.53,lon:6.02,elev:20,state:"Rivers",zone:"South-South"},
+            {name:"Asaba",lat:6.33,lon:5.60,elev:18,state:"Delta",zone:"South-South"},
+            {name:"Benin_City",lat:7.25,lon:5.20,elev:85,state:"Edo",zone:"South-South"},
+        ];
+
+        function initMap() {
+            map = L.map('map').setView([9.0, 8.0], 6);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            function getColor(elev) {
+                return elev > 1000 ? '#a855f7' : elev > 500 ? '#f97316' : elev > 200 ? '#eab308' : '#22c55e';
+            }
+
+            stations.forEach(s => {
+                const color = getColor(s.elev);
+                const marker = L.circleMarker([s.lat, s.lon], {
+                    radius: s.elev > 1000 ? 14 : s.elev > 500 ? 12 : 10,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 3,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                }).addTo(map);
+
+                const label = L.divIcon({
+                    className: 'station-label',
+                    html: `<div style="background:${color};color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.3);">${s.name}</div>`,
+                    iconSize: [80, 20],
+                    iconAnchor: [40, -8]
+                });
+                L.marker([s.lat, s.lon], { icon: label }).addTo(map);
+
+                marker.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:180px;"><div style="font-weight:800;font-size:14px;margin-bottom:6px;color:#e2e8f0;">${s.name}</div><div style="font-size:12px;color:#94a3b8;line-height:1.7;"><div><b>Lat:</b> ${s.lat}°N, <b>Lon:</b> ${s.lon}°E</div><div><b>Elevation:</b> ${s.elev}m</div><div><b>State:</b> ${s.state}</div><div><b>Zone:</b> ${s.zone}</div></div></div>`);
+
+                marker.on('click', () => {
+                    document.getElementById('lat').value = s.lat;
+                    document.getElementById('lon').value = s.lon;
+                    document.getElementById('elev').value = s.elev;
+                    document.getElementById('stationSelect').value = `${s.lat},${s.lon},${s.elev}`;
+                    map.setView([s.lat, s.lon], 10);
+                    stations.forEach(st => st._marker && st._marker.setStyle({ weight: 3, color: '#fff' }));
+                    marker.setStyle({ weight: 4, color: '#06b6d4' });
+                    if (window.innerWidth < 1024) toggleSidebar();
+                });
+                s._marker = marker;
+            });
+
+            const legend = L.control({ position: 'bottomright' });
+            legend.onAdd = function () {
+                const div = L.DomUtil.create('div');
+                div.style.cssText = 'background:rgba(15,23,42,0.95);padding:10px;border-radius:8px;color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(10px);';
+                div.innerHTML = '<b style="color:#e2e8f0">Elevation</b><br><span style="color:#22c55e">●</span> Low (&lt;200m)<br><span style="color:#eab308">●</span> Medium (200-500m)<br><span style="color:#f97316">●</span> High (500-1000m)<br><span style="color:#a855f7">●</span> Very High (&gt;1000m)';
+                return div;
+            };
+            legend.addTo(map);
+        }
+
+        function toggleSidebar() {
+            sidebarOpen = !sidebarOpen;
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebarOpen) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function closeSidebar() {
+            sidebarOpen = false;
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
+        document.getElementById('mobileMenuBtn').addEventListener('click', toggleSidebar);
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(t => {
+                t.classList.remove('active', 'text-cyan-400', 'bg-cyan-500/10');
+                t.classList.add('text-dark-400');
+            });
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+
+            const btn = document.querySelector(`[data-tab="${tab}"]`);
+            btn.classList.add('active', 'text-cyan-400', 'bg-cyan-500/10');
+            btn.classList.remove('text-dark-400');
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+        }
+
+        function onStationChange() {
+            const val = document.getElementById('stationSelect').value;
+            if (val) {
+                const [lat, lon, elev] = val.split(',');
+                document.getElementById('lat').value = lat;
+                document.getElementById('lon').value = lon;
+                document.getElementById('elev').value = elev;
+                map.setView([parseFloat(lat), parseFloat(lon)], 9);
+            }
+        }
+
+        function getPayload() {
+            const payload = {
+                lat: parseFloat(document.getElementById('lat').value),
+                lon: parseFloat(document.getElementById('lon').value),
+                elevation_m: parseFloat(document.getElementById('elev').value),
+                year: parseInt(document.getElementById('year').value),
+                month: parseInt(document.getElementById('month').value),
+                day: parseInt(document.getElementById('day').value),
+                hour: parseInt(document.getElementById('hour').value),
+                model: document.getElementById('modelSelect').value
+            };
+            const ts = document.getElementById('ts').value,
+                ps = document.getElementById('ps').value,
+                rhs = document.getElementById('rhs').value;
+            if (ts) payload.ts_k = parseFloat(ts);
+            if (ps) payload.ps_hpa = parseFloat(ps);
+            if (rhs) payload.rhs_pct = parseFloat(rhs);
+            return payload;
+        }
+
+        function validatePayload(payload) {
+            if (isNaN(payload.lat) || isNaN(payload.lon) || isNaN(payload.elevation_m)) {
+                throw new Error('Invalid location coordinates or elevation');
+            }
+            if (isNaN(payload.year) || isNaN(payload.month) || isNaN(payload.day) || isNaN(payload.hour)) {
+                throw new Error('Invalid date or time values');
+            }
+            if (payload.month < 1 || payload.month > 12 || payload.day < 1 || payload.day > 31) {
+                throw new Error('Month must be 1-12 and day must be 1-31');
+            }
+        }
+
+        function showError(msg) {
+            const err = document.getElementById('error');
+            document.getElementById('errorText').textContent = msg;
+            err.classList.remove('hidden');
+            setTimeout(() => err.classList.add('hidden'), 5000);
+        }
+
+        async function calculateZTD() {
+            const loading = document.getElementById('loading'),
+                results = document.getElementById('results');
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+
+            try {
+                const payload = getPayload();
+                validatePayload(payload);
+
+                const zwd = document.getElementById('zwd').value;
+                if (zwd && parseFloat(zwd) > 0) payload.zwd_mm = parseFloat(zwd);
+
+                const [ztdResult, tmResult] = await Promise.allSettled([
+                    fetch(`${API_BASE}/api/v1/ztd/compute`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }),
+                    fetch(`${API_BASE}/api/v1/tm/compare`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                ]);
+
+                if (ztdResult.status === 'rejected') {
+                    throw new Error(`ZTD request failed: ${ztdResult.reason.message}`);
+                }
+                if (tmResult.status === 'rejected') {
+                    throw new Error(`TM request failed: ${tmResult.reason.message}`);
+                }
+
+                const ztdRes = ztdResult.value;
+                const tmRes = tmResult.value;
+
+                if (!ztdRes.ok) throw new Error(`ZTD HTTP ${ztdRes.status}`);
+                if (!tmRes.ok) throw new Error(`TM HTTP ${tmRes.status}`);
+
+                const ztdData = await ztdRes.json();
+                const tmData = await tmRes.json();
+                const modelName = payload.model === 'random_forest' ? 'Random Forest' : payload.model === 'xgboost' ? 'XGBoost' : 'Linear';
+
+                document.getElementById('modelBadge').textContent = modelName;
+                document.getElementById('compOursBadge').textContent = 'Nigeria (' + modelName + ')';
+                const tmValue = tmData.models[payload.model];
+
+                document.getElementById('tmModel').textContent = tmValue.toFixed(2);
+                document.getElementById('zhdValue').textContent = ztdData.zhd.mm.toFixed(1);
+                document.getElementById('zwdValue').textContent = ztdData.zwd.mm.toFixed(1);
+                document.getElementById('ztdValue').textContent = ztdData.ztd.mm.toFixed(1);
+                document.getElementById('pwvValue').textContent = ztdData.pwv.mm.toFixed(2);
+                document.getElementById('compOurs').textContent = tmValue.toFixed(2);
+
+                // FIX: Handle both possible API field names with fallback chain
+                const bevisTm = tmData.baseline_models.bevis_model ?? tmData.baseline_models.bevis ?? 0;
+                const gpt3Tm = tmData.baseline_models.gpt3_approx ?? tmData.baseline_models.gpt3 ?? 0;
+
+                document.getElementById('compBevis').textContent = bevisTm.toFixed(2);
+                document.getElementById('compGpt3').textContent = gpt3Tm.toFixed(2);
+                document.getElementById('diffBevis').textContent = (tmData.differences.bevis_vs_nigeria > 0 ? '+' : '') + tmData.differences.bevis_vs_nigeria.toFixed(2);
+                document.getElementById('diffGpt3').textContent = (tmData.differences.gpt3_vs_nigeria > 0 ? '+' : '') + tmData.differences.gpt3_vs_nigeria.toFixed(2);
+                document.getElementById('inputSummary').innerHTML = `Model: <span class="text-cyan-400">${modelName}</span> | DOY: ${ztdData.doy}<br>Ts: ${ztdData.inputs.ts_k.toFixed(1)} K | Ps: ${ztdData.inputs.ps_hpa.toFixed(1)} hPa | RH: ${ztdData.inputs.rhs_pct.toFixed(1)}% | Pi: ${ztdData.conversion_factor_pi.toFixed(4)}`;
+
+                // FIX: Force display and scroll to results
+                results.classList.remove('hidden');
+                results.style.display = 'block';
+                results.classList.add('fade-in');
+
+                // Auto-scroll to results in sidebar
+                setTimeout(() => {
+                    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        async function compareModels() {
+            const loading = document.getElementById('loading');
+            loading.classList.remove('hidden');
+
+            try {
+                const payload = getPayload();
+                validatePayload(payload);
+                delete payload.model;
+
+                const response = await fetch(`${API_BASE}/api/v1/tm/compare`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                let html = `<div class="space-y-4">`;
+
+                html += `<div>
+                    <div class="text-xs font-semibold text-dark-400 uppercase tracking-wider mb-2">Location & Time</div>
+                    <div class="text-sm text-dark-200">${data.time || 'N/A'} — ${data.location.lat}°N, ${data.location.lon}°E, ${data.location.elevation_m}m</div>
+                </div>`;
+
+                html += `<div>
+                    <div class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2">Nigeria Models</div>
+                    <div class="space-y-1">`;
+                for (const [name, val] of Object.entries(data.models || {})) {
+                    const label = name === 'random_forest' ? 'Random Forest ★' :
+                                 name === 'xgboost' ? 'XGBoost' : 'Linear Regression';
+                    const isBest = name === 'random_forest';
+                    html += `<div class="flex justify-between text-sm ${isBest ? 'text-emerald-400 font-semibold' : 'text-dark-200'}">
+                        <span>${label}</span><span>${val.toFixed(3)} K</span>
+                    </div>`;
+                }
+                html += `</div></div>`;
+
+                html += `<div>
+                    <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Baseline Models</div>
+                    <div class="space-y-1 text-sm text-dark-200">`;
+                const baseline = data.baseline_models || {};
+                html += `<div class="flex justify-between"><span>Bevis (70.2 + 0.72Ts)</span><span>${(baseline.bevis ?? baseline.bevis_model ?? 0).toFixed(3)} K</span></div>`;
+                html += `<div class="flex justify-between"><span>GPT3 Approximation</span><span>${(baseline.gpt3 ?? baseline.gpt3_approx ?? 0).toFixed(3)} K</span></div>`;
+                html += `<div class="flex justify-between"><span>Askne & Nordius</span><span>${(baseline.askne ?? 0).toFixed(3)} K</span></div>`;
+                html += `<div class="flex justify-between"><span>Davis et al.</span><span>${(baseline.davis ?? 0).toFixed(3)} K</span></div>`;
+                html += `<div class="flex justify-between"><span>Mendes et al.</span><span>${(baseline.mendes ?? 0).toFixed(3)} K</span></div>`;
+                html += `<div class="flex justify-between"><span>OMF Simplified</span><span>${(baseline.omf ?? 0).toFixed(3)} K</span></div>`;
+                html += `</div></div>`;
+
+                if (data.differences) {
+                    html += `<div>
+                        <div class="text-xs font-semibold text-violet-400 uppercase tracking-wider mb-2">Differences (Nigeria — Baseline)</div>
+                        <div class="space-y-1 text-sm text-dark-200">`;
+                    for (const [name, diff] of Object.entries(data.differences)) {
+                        const baseName = name.replace('_vs_nigeria', '').replace(/_/g, ' ');
+                        const color = diff > 0 ? 'text-emerald-400' : diff < 0 ? 'text-red-400' : 'text-dark-300';
+                        html += `<div class="flex justify-between ${color}">
+                            <span>${baseName}</span><span>${diff > 0 ? '+' : ''}${diff.toFixed(3)} K</span>
+                        </div>`;
+                    }
+                    html += `</div></div>`;
+                }
+
+                html += `</div>`;
+
+                document.getElementById('compareModalBody').innerHTML = html;
+                document.getElementById('compareModal').classList.add('active');
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function closeCompareModal() {
+            document.getElementById('compareModal').classList.remove('active');
+        }
+
+        async function showTimeSeries() {
+            closeNationalChart();
+
+            const chartPanel = document.getElementById('chartPanel');
+            chartPanel.classList.remove('hidden');
+
+            const payload = {
+                lat: parseFloat(document.getElementById('lat').value),
+                lon: parseFloat(document.getElementById('lon').value),
+                elevation_m: parseFloat(document.getElementById('elev').value),
+                year: parseInt(document.getElementById('year').value),
+                month: 1,
+                model: document.getElementById('modelSelect').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/timeseries`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                const labels = data.data.map(d => d.date),
+                    tmValues = data.data.map(d => d.nigeria_model),
+                    bevisValues = data.data.map(d => d.bevis_model),
+                    pwvValues = data.data.map(d => d.pwv_mm);
+                const ctx = document.getElementById('tmChart').getContext('2d');
+                if (tmChart) tmChart.destroy();
+                tmChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Nigeria Model Tm (K)', data: tmValues, borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', tension: 0.4, fill: true, yAxisID: 'y', borderWidth: 2 },
+                            { label: 'Bevis Model Tm (K)', data: bevisValues, borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.4, borderDash: [5, 5], yAxisID: 'y', borderWidth: 2 },
+                            { label: 'PWV (mm)', data: pwvValues, borderColor: '#8b5cf6', backgroundColor: 'transparent', tension: 0.4, yAxisID: 'y1', borderWidth: 2 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { labels: { color: '#94a3b8', font: { size: 11 } } }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                            y: { type: 'linear', display: true, position: 'left', ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' }, title: { display: true, text: 'Tm (K)', color: '#94a3b8' } },
+                            y1: { type: 'linear', display: true, position: 'right', ticks: { color: '#8b5cf6', font: { size: 10 } }, grid: { drawOnChartArea: false }, title: { display: true, text: 'PWV (mm)', color: '#8b5cf6' } }
+                        }
+                    }
+                });
+            } catch (err) {
+                showError('Time Series Error: ' + err.message);
+            }
+        }
+
+        function closeChart() {
+            document.getElementById('chartPanel').classList.add('hidden');
+        }
+
+        async function showNationalSummary() {
+            closeChart();
+
+            const chartPanel = document.getElementById('nationalChartPanel');
+            chartPanel.classList.add('active');
+
+            const payload = {
+                lat: parseFloat(document.getElementById('lat').value),
+                lon: parseFloat(document.getElementById('lon').value),
+                elevation_m: parseFloat(document.getElementById('elev').value),
+                year: parseInt(document.getElementById('year').value),
+                month: 1,
+                model: document.getElementById('modelSelect').value
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/national/summary`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+
+                const zones = Object.keys(data.zone_summary || {});
+                const zoneTm = zones.map(z => data.zone_summary[z].avg_tm);
+                const zonePwv = zones.map(z => data.zone_summary[z].avg_pwv);
+                const zoneDiff = zones.map(z => data.zone_summary[z].avg_diff);
+
+                const ctx = document.getElementById('nationalChart').getContext('2d');
+                if (nationalChart) nationalChart.destroy();
+
+                nationalChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: zones,
+                        datasets: [
+                            {
+                                label: 'Nigeria Model Avg Tm (K)',
+                                data: zoneTm,
+                                backgroundColor: 'rgba(6, 182, 212, 0.7)',
+                                borderColor: '#06b6d4',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Bevis Model Avg Tm (K)',
+                                data: zoneTm.map((v, i) => v - zoneDiff[i]),
+                                backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                                borderColor: '#f59e0b',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Avg PWV (mm)',
+                                data: zonePwv,
+                                backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                                borderColor: '#8b5cf6',
+                                borderWidth: 1,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+                            title: {
+                                display: true,
+                                text: `Nigeria GNSS Meteorology — ${data.year} | ${data.total_stations} Stations`,
+                                color: '#e2e8f0',
+                                font: { size: 14 }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#64748b', font: { size: 10 } },
+                                grid: { color: 'rgba(255,255,255,0.03)' }
+                            },
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                ticks: { color: '#64748b', font: { size: 10 } },
+                                grid: { color: 'rgba(255,255,255,0.03)' },
+                                title: { display: true, text: 'Tm (K)', color: '#94a3b8' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                position: 'right',
+                                ticks: { color: '#8b5cf6', font: { size: 10 } },
+                                grid: { drawOnChartArea: false },
+                                title: { display: true, text: 'PWV (mm)', color: '#8b5cf6' }
+                            }
+                        }
+                    }
+                });
+
+                const stationTable = document.getElementById('nationalStationTable');
+                stationTable.innerHTML = `
+                    <table style="width:100%; border-collapse: collapse; font-size: 11px; color: #94a3b8;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                <th style="text-align:left; padding: 4px; color: #e2e8f0;">Station</th>
+                                <th style="text-align:left; padding: 4px; color: #e2e8f0;">State</th>
+                                <th style="text-align:right; padding: 4px; color: #e2e8f0;">Tm (K)</th>
+                                <th style="text-align:right; padding: 4px; color: #e2e8f0;">PWV (mm)</th>
+                                <th style="text-align:right; padding: 4px; color: #e2e8f0;">Diff vs Bevis</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.station_data.map(s => `
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                    <td style="padding: 4px;">${s.station}</td>
+                                    <td style="padding: 4px;">${s.state}</td>
+                                    <td style="text-align:right; padding: 4px; color: #06b6d4;">${s.nigeria_tm}</td>
+                                    <td style="text-align:right; padding: 4px; color: #8b5cf6;">${s.pwv_mm}</td>
+                                    <td style="text-align:right; padding: 4px; color: ${s.tm_diff > 0 ? '#10b981' : '#ef4444'};">${s.tm_diff > 0 ? '+' : ''}${s.tm_diff}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+            } catch (err) {
+                showError('National Summary Error: ' + err.message);
+            }
+        }
+
+        function closeNationalChart() {
+            document.getElementById('nationalChartPanel').classList.remove('active');
+        }
+
+        async function downloadResults() {
+            try {
+                const payload = getPayload();
+                validatePayload(payload);
+
+                const response = await fetch(`${API_BASE}/api/v1/export`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `nigeria_gnss_${payload.year}${String(payload.month).padStart(2,'0')}${String(payload.day).padStart(2,'0')}_${payload.hour}h.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                showError('Download Error: ' + err.message);
+            }
+        }
+
+        async function testConnection() {
+            try {
+                const response = await fetch(document.getElementById('apiBase').value + '/');
+                alert(response.ok ? '✅ Connection successful!' : '❌ Connection failed');
+            } catch (err) {
+                alert('❌ Connection failed: ' + err.message);
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if (map) map.invalidateSize();
+        });
+
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+</html>

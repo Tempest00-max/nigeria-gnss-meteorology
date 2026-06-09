@@ -1,0 +1,255 @@
+================================================================================
+NIGERIA GNSS METEOROLOGY - THESIS REPORT v2
+Development of a High-Resolution Machine Learning-Based
+Weighted Mean Temperature Model over Nigeria Using ERA5 Reanalysis Data
+Generated: 2026-06-08 20:40:50
+================================================================================
+
+1. DATASET OVERVIEW
+----------------------------------------
+Total records: 146000
+Training records (2020-2023): 116800
+Validation records (2024): 29200
+Number of stations: 20
+Time resolution: 6-hourly
+Spatial coverage: 4.98N - 12.0N
+                  3.35E - 13.15E
+
+2. VARIABLE STATISTICS
+----------------------------------------
+                tm_k           ts_k         ps_hpa        rhs_pct    elevation_m
+count  146000.000000  146000.000000  146000.000000  146000.000000  146000.000000
+mean      304.274856     296.280671     980.072345      63.788526     288.250000
+std         6.409618       4.296002      33.861699      15.622053     301.943226
+min       283.259000     280.144000     863.720000      10.000000      12.000000
+25%       299.377000     293.236000     961.000000      52.630000      55.000000
+50%       303.812000     296.286000     987.360000      63.785000     220.000000
+75%       309.147000     299.316000    1007.170000      75.000000     435.000000
+max       326.918000     311.511000    1018.840000     100.000000    1280.000000
+
+3. MODEL COEFFICIENTS (Linear Regression)
+----------------------------------------
+Model: Tm = a0 + a1*Ts + a2*Ps + a3*RHs + a4*h + a5*sin(2*pi*t) + a6*cos(2*pi*t)
+
+  a0: 10.609331
+  a1: 1.001931
+  a2: -0.003107
+  a3: -0.000591
+  a4: -0.000352
+  a5: 3.014177
+  a6: 2.018383
+
+4. MODEL COMPARISON
+----------------------------------------
+Model                      R?   RMSE (K)    MAE (K)   Bias (K)
+------------------------------------------------------------
+  Linear Regression      0.9008      2.015      1.607      0.009 [BEST]
+  Random Forest          0.8972      2.052      1.638      0.012
+  XGBoost                0.8998      2.026      1.616      0.011
+------------------------------------------------------------
+Best model by RMSE: Linear Regression
+
+5. VALIDATION RESULTS (2024)
+----------------------------------------
+
+5.1. LINEAR MODEL
+----------------------------------------
+R2: 0.9008
+RMSE: 2.015 K
+MAE: 1.607 K
+Bias: 0.009 K
+Max residual: 8.826 K
+Min residual: -7.911 K
+
+  Validation by Station (linear):
+  Abeokuta: RMSE=2.046K, Bias=-0.073K, MAE=1.61K, N=1460
+  Abuja: RMSE=2.015K, Bias=-0.004K, MAE=1.616K, N=1460
+  Asaba: RMSE=1.976K, Bias=-0.033K, MAE=1.589K, N=1460
+  Bauchi: RMSE=2.034K, Bias=-0.117K, MAE=1.617K, N=1460
+  Benin_City: RMSE=2.025K, Bias=0.024K, MAE=1.618K, N=1460
+  Calabar: RMSE=2.059K, Bias=0.058K, MAE=1.641K, N=1460
+  Enugu: RMSE=1.992K, Bias=0.065K, MAE=1.574K, N=1460
+  Gombe: RMSE=2.009K, Bias=0.036K, MAE=1.622K, N=1460
+  Ibadan: RMSE=1.988K, Bias=-0.021K, MAE=1.583K, N=1460
+  Ilorin: RMSE=2.036K, Bias=-0.006K, MAE=1.638K, N=1460
+  Jos: RMSE=1.961K, Bias=0.001K, MAE=1.573K, N=1460
+  Kaduna: RMSE=1.959K, Bias=0.019K, MAE=1.573K, N=1460
+  Kano: RMSE=2.04K, Bias=0.033K, MAE=1.648K, N=1460
+  Katsina: RMSE=1.945K, Bias=0.057K, MAE=1.525K, N=1460
+  Lagos_Coastal: RMSE=2.005K, Bias=-0.061K, MAE=1.602K, N=1460
+  Lokoja: RMSE=1.992K, Bias=0.09K, MAE=1.589K, N=1460
+  Maiduguri: RMSE=2.05K, Bias=0.054K, MAE=1.613K, N=1460
+  Minna: RMSE=2.018K, Bias=0.03K, MAE=1.594K, N=1460
+  Owerri: RMSE=2.1K, Bias=-0.065K, MAE=1.675K, N=1460
+  Uyo: RMSE=2.052K, Bias=0.098K, MAE=1.644K, N=1460
+
+  Validation by Month (linear):
+  Month 1: RMSE=2.021K, Bias=0.004K, N=2480
+  Month 2: RMSE=1.987K, Bias=0.051K, N=2320
+  Month 3: RMSE=1.979K, Bias=-0.004K, N=2480
+  Month 4: RMSE=2.032K, Bias=0.01K, N=2400
+  Month 5: RMSE=2.074K, Bias=0.035K, N=2480
+  Month 6: RMSE=2.014K, Bias=0.053K, N=2400
+  Month 7: RMSE=2.047K, Bias=0.008K, N=2480
+  Month 8: RMSE=1.983K, Bias=-0.019K, N=2480
+  Month 9: RMSE=2.008K, Bias=0.016K, N=2400
+  Month 10: RMSE=2.06K, Bias=-0.06K, N=2480
+  Month 11: RMSE=1.948K, Bias=-0.046K, N=2400
+  Month 12: RMSE=2.025K, Bias=0.067K, N=2400
+
+5.2. RF MODEL
+----------------------------------------
+R2: 0.8972
+RMSE: 2.052 K
+MAE: 1.638 K
+Bias: 0.012 K
+Max residual: 8.994 K
+Min residual: -7.799 K
+
+  Validation by Station (rf):
+  Abeokuta: RMSE=2.085K, Bias=-0.073K, MAE=1.636K, N=1460
+  Abuja: RMSE=2.042K, Bias=0.007K, MAE=1.644K, N=1460
+  Asaba: RMSE=1.999K, Bias=-0.04K, MAE=1.608K, N=1460
+  Bauchi: RMSE=2.071K, Bias=-0.124K, MAE=1.643K, N=1460
+  Benin_City: RMSE=2.052K, Bias=0.044K, MAE=1.642K, N=1460
+  Calabar: RMSE=2.094K, Bias=0.066K, MAE=1.671K, N=1460
+  Enugu: RMSE=2.033K, Bias=0.07K, MAE=1.606K, N=1460
+  Gombe: RMSE=2.034K, Bias=0.055K, MAE=1.64K, N=1460
+  Ibadan: RMSE=2.014K, Bias=-0.014K, MAE=1.605K, N=1460
+  Ilorin: RMSE=2.057K, Bias=-0.007K, MAE=1.651K, N=1460
+  Jos: RMSE=2.036K, Bias=-0.006K, MAE=1.648K, N=1460
+  Kaduna: RMSE=2.01K, Bias=0.009K, MAE=1.612K, N=1460
+  Kano: RMSE=2.082K, Bias=0.056K, MAE=1.675K, N=1460
+  Katsina: RMSE=1.987K, Bias=0.078K, MAE=1.57K, N=1460
+  Lagos_Coastal: RMSE=2.037K, Bias=-0.082K, MAE=1.629K, N=1460
+  Lokoja: RMSE=2.018K, Bias=0.084K, MAE=1.607K, N=1460
+  Maiduguri: RMSE=2.095K, Bias=0.058K, MAE=1.649K, N=1460
+  Minna: RMSE=2.057K, Bias=0.048K, MAE=1.629K, N=1460
+  Owerri: RMSE=2.127K, Bias=-0.077K, MAE=1.699K, N=1460
+  Uyo: RMSE=2.111K, Bias=0.094K, MAE=1.703K, N=1460
+
+  Validation by Month (rf):
+  Month 1: RMSE=2.05K, Bias=0.011K, N=2480
+  Month 2: RMSE=1.996K, Bias=-0.01K, N=2320
+  Month 3: RMSE=2.005K, Bias=0.017K, N=2480
+  Month 4: RMSE=2.071K, Bias=0.028K, N=2400
+  Month 5: RMSE=2.121K, Bias=0.021K, N=2480
+  Month 6: RMSE=2.06K, Bias=0.106K, N=2400
+  Month 7: RMSE=2.097K, Bias=-0.025K, N=2480
+  Month 8: RMSE=1.999K, Bias=-0.023K, N=2480
+  Month 9: RMSE=2.031K, Bias=0.023K, N=2400
+  Month 10: RMSE=2.113K, Bias=-0.088K, N=2480
+  Month 11: RMSE=2.001K, Bias=-0.022K, N=2400
+  Month 12: RMSE=2.076K, Bias=0.111K, N=2400
+
+5.3. XGB MODEL
+----------------------------------------
+R2: 0.8998
+RMSE: 2.026 K
+MAE: 1.616 K
+Bias: 0.011 K
+Max residual: 8.935 K
+Min residual: -7.718 K
+
+  Validation by Station (xgb):
+  Abeokuta: RMSE=2.054K, Bias=-0.075K, MAE=1.618K, N=1460
+  Abuja: RMSE=2.017K, Bias=0.018K, MAE=1.616K, N=1460
+  Asaba: RMSE=1.984K, Bias=-0.058K, MAE=1.594K, N=1460
+  Bauchi: RMSE=2.042K, Bias=-0.112K, MAE=1.621K, N=1460
+  Benin_City: RMSE=2.031K, Bias=0.035K, MAE=1.619K, N=1460
+  Calabar: RMSE=2.071K, Bias=0.055K, MAE=1.648K, N=1460
+  Enugu: RMSE=2.004K, Bias=0.075K, MAE=1.584K, N=1460
+  Gombe: RMSE=2.017K, Bias=0.033K, MAE=1.629K, N=1460
+  Ibadan: RMSE=1.995K, Bias=-0.012K, MAE=1.586K, N=1460
+  Ilorin: RMSE=2.039K, Bias=0.014K, MAE=1.641K, N=1460
+  Jos: RMSE=2.0K, Bias=-0.038K, MAE=1.611K, N=1460
+  Kaduna: RMSE=1.973K, Bias=0.023K, MAE=1.577K, N=1460
+  Kano: RMSE=2.053K, Bias=0.044K, MAE=1.66K, N=1460
+  Katsina: RMSE=1.963K, Bias=0.08K, MAE=1.544K, N=1460
+  Lagos_Coastal: RMSE=2.01K, Bias=-0.091K, MAE=1.609K, N=1460
+  Lokoja: RMSE=2.007K, Bias=0.096K, MAE=1.601K, N=1460
+  Maiduguri: RMSE=2.063K, Bias=0.044K, MAE=1.624K, N=1460
+  Minna: RMSE=2.029K, Bias=0.029K, MAE=1.598K, N=1460
+  Owerri: RMSE=2.107K, Bias=-0.054K, MAE=1.678K, N=1460
+  Uyo: RMSE=2.062K, Bias=0.113K, MAE=1.654K, N=1460
+
+  Validation by Month (xgb):
+  Month 1: RMSE=2.032K, Bias=0.016K, N=2480
+  Month 2: RMSE=1.994K, Bias=0.006K, N=2320
+  Month 3: RMSE=1.986K, Bias=0.03K, N=2480
+  Month 4: RMSE=2.043K, Bias=-0.008K, N=2400
+  Month 5: RMSE=2.08K, Bias=0.002K, N=2480
+  Month 6: RMSE=2.028K, Bias=0.105K, N=2400
+  Month 7: RMSE=2.061K, Bias=0.009K, N=2480
+  Month 8: RMSE=1.992K, Bias=-0.007K, N=2480
+  Month 9: RMSE=2.019K, Bias=0.032K, N=2400
+  Month 10: RMSE=2.08K, Bias=-0.069K, N=2480
+  Month 11: RMSE=1.963K, Bias=-0.052K, N=2400
+  Month 12: RMSE=2.033K, Bias=0.07K, N=2400
+
+6. ZTD AND PWV STATISTICS
+----------------------------------------
+ZHD mean: 2237.29 mm (range: 1972.2 - 2325.8 mm)
+ZWD mean: 228.45 mm (range: 14.0 - 861.7 mm)
+ZTD mean: 2465.74 mm (range: 2010.5 - 3056.9 mm)
+PWV mean: 39.93 mm (range: 2.3 - 158.9 mm)
+
+6.1. ZTD BY STATION (Mean Values)
+----------------------------------------
+                zhd_mm  zwd_mm   ztd_mm  pwv_mm  elevation_m
+point_name                                                  
+Uyo            2309.80  183.49  2493.29   31.92           12
+Lagos_Coastal  2308.93  207.93  2516.87   36.28           15
+Asaba          2308.10  205.39  2513.49   35.83           18
+Calabar        2303.57  180.89  2484.46   31.45           35
+Lokoja         2302.05  232.66  2534.71   40.72           40
+Abeokuta       2296.67  217.15  2513.82   37.94           60
+Owerri         2294.06  199.05  2493.11   34.69           70
+Benin_City     2289.98  217.84  2507.82   38.06           85
+Ibadan         2280.54  218.78  2499.33   38.21          120
+Enugu          2264.61  190.17  2454.78   33.08          180
+Minna          2243.26  242.58  2485.85   42.47          260
+Maiduguri      2232.55  300.29  2532.85   52.88          300
+Ilorin         2230.20  230.68  2460.88   40.32          310
+Abuja          2217.12  234.83  2451.95   41.05          360
+Gombe          2201.48  254.66  2456.14   44.60          420
+Kano           2185.98  289.46  2475.44   50.88          480
+Katsina        2175.65  286.79  2462.44   50.39          520
+Bauchi         2157.99  241.71  2399.69   42.24          590
+Kaduna         2152.95  245.97  2398.93   42.99          610
+Jos            1990.21  188.69  2178.89   32.63         1280
+
+6.2. SEASONAL PWV VARIATION
+----------------------------------------
+        mean    std    min     max
+month                             
+1      47.25  17.13   9.87  133.48
+2      62.60  20.73  13.87  156.16
+3      65.72  20.63  20.98  158.93
+4      57.46  18.44  16.02  140.41
+5      46.94  15.80  12.56  115.57
+6      40.00  13.96  10.66  116.41
+7      34.95  12.81   6.18   93.97
+8      29.20  11.50   3.49   89.72
+9      23.28   9.57   3.46   76.83
+10     20.18   8.31   2.33   61.24
+11     21.97   8.83   2.69   74.34
+12     30.86  12.07   5.59   94.04
+
+7. COMPARISON WITH EXISTING MODELS
+----------------------------------------
+Bevis Model (Tm = 70.2 + 0.72*Ts):
+  RMSE: 21.121 K
+  Bias: -20.753 K
+  MAE: 20.753 K
+
+Improvement over Bevis: 90.5% reduction in RMSE
+
+8. CONCLUSIONS
+----------------------------------------
+1. The Linear Regression model achieved the best performance with RMSE < 2.1 K.
+2. The Nigeria model significantly outperforms the global Bevis model (RMSE ~21 K vs ~2 K).
+3. The inclusion of surface pressure, humidity, elevation, and seasonal terms
+   captures the complex meteorology of Nigeria's diverse climate zones.
+4. ZTD and PWV can be reliably computed from the derived Tm model.
+5. The system supports real-time GNSS meteorology applications across Nigeria.

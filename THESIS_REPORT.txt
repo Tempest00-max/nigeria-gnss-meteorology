@@ -1,0 +1,92 @@
+================================================================================
+NIGERIA GNSS METEOROLOGY - THESIS REPORT
+Generated: 2026-06-08 19:49:37
+================================================================================
+
+1. DATASET OVERVIEW
+----------------------------------------
+Total records: 146000
+Training records (2020-2023): 116800
+Validation records (2024): 29200
+Number of stations: 20
+Time resolution: 6-hourly
+Spatial coverage: 4.98N - 12.0N
+                  3.35E - 13.15E
+
+2. VARIABLE STATISTICS
+----------------------------------------
+                tm_k           ts_k         ps_hpa        rhs_pct    elevation_m
+count  146000.000000  146000.000000  146000.000000  146000.000000  146000.000000
+mean      304.274856     296.280671     980.072345      63.788526     288.250000
+std         6.409618       4.296002      33.861699      15.622053     301.943226
+min       283.259000     280.144000     863.720000      10.000000      12.000000
+25%       299.377000     293.236000     961.000000      52.630000      55.000000
+50%       303.812000     296.286000     987.360000      63.785000     220.000000
+75%       309.147000     299.316000    1007.170000      75.000000     435.000000
+max       326.918000     311.511000    1018.840000     100.000000    1280.000000
+
+3. MODEL COEFFICIENTS
+----------------------------------------
+Model: Tm = a0 + a1*Ts + a2*Ps + a3*RHs + a4*h + a5*sin(2*pi*t) + a6*cos(2*pi*t)
+
+  a0: 10.609331
+  a1: 1.001931
+  a2: -0.003107
+  a3: -0.000591
+  a4: -0.000352
+  a5: 3.014177
+  a6: 2.018383
+
+4. VALIDATION RESULTS (2024)
+----------------------------------------
+R2: 0.9008
+RMSE: 2.015 K
+MAE: 1.607 K
+Bias: 0.009 K
+Max residual: 8.826 K
+Min residual: -7.911 K
+
+4.1. VALIDATION BY STATION
+----------------------------------------
+Abeokuta: RMSE=2.046K, Bias=-0.073K, MAE=1.61K, N=1460
+Abuja: RMSE=2.015K, Bias=-0.004K, MAE=1.616K, N=1460
+Asaba: RMSE=1.976K, Bias=-0.033K, MAE=1.589K, N=1460
+Bauchi: RMSE=2.034K, Bias=-0.117K, MAE=1.617K, N=1460
+Benin_City: RMSE=2.025K, Bias=0.024K, MAE=1.618K, N=1460
+Calabar: RMSE=2.059K, Bias=0.058K, MAE=1.641K, N=1460
+Enugu: RMSE=1.992K, Bias=0.065K, MAE=1.574K, N=1460
+Gombe: RMSE=2.009K, Bias=0.036K, MAE=1.622K, N=1460
+Ibadan: RMSE=1.988K, Bias=-0.021K, MAE=1.583K, N=1460
+Ilorin: RMSE=2.036K, Bias=-0.006K, MAE=1.638K, N=1460
+Jos: RMSE=1.961K, Bias=0.001K, MAE=1.573K, N=1460
+Kaduna: RMSE=1.959K, Bias=0.019K, MAE=1.573K, N=1460
+Kano: RMSE=2.04K, Bias=0.033K, MAE=1.648K, N=1460
+Katsina: RMSE=1.945K, Bias=0.057K, MAE=1.525K, N=1460
+Lagos_Coastal: RMSE=2.005K, Bias=-0.061K, MAE=1.602K, N=1460
+Lokoja: RMSE=1.992K, Bias=0.09K, MAE=1.589K, N=1460
+Maiduguri: RMSE=2.05K, Bias=0.054K, MAE=1.613K, N=1460
+Minna: RMSE=2.018K, Bias=0.03K, MAE=1.594K, N=1460
+Owerri: RMSE=2.1K, Bias=-0.065K, MAE=1.675K, N=1460
+Uyo: RMSE=2.052K, Bias=0.098K, MAE=1.644K, N=1460
+
+4.2. VALIDATION BY MONTH
+----------------------------------------
+Month 1: RMSE=2.021K, Bias=0.004K, N=2480
+Month 2: RMSE=1.987K, Bias=0.051K, N=2320
+Month 3: RMSE=1.979K, Bias=-0.004K, N=2480
+Month 4: RMSE=2.032K, Bias=0.01K, N=2400
+Month 5: RMSE=2.074K, Bias=0.035K, N=2480
+Month 6: RMSE=2.014K, Bias=0.053K, N=2400
+Month 7: RMSE=2.047K, Bias=0.008K, N=2480
+Month 8: RMSE=1.983K, Bias=-0.019K, N=2480
+Month 9: RMSE=2.008K, Bias=0.016K, N=2400
+Month 10: RMSE=2.06K, Bias=-0.06K, N=2480
+Month 11: RMSE=1.948K, Bias=-0.046K, N=2400
+Month 12: RMSE=2.025K, Bias=0.067K, N=2400
+
+5. COMPARISON WITH EXISTING MODELS
+----------------------------------------
+Bevis Model (Tm = 70.2 + 0.72*Ts):
+  RMSE: 21.121 K
+  Bias: -20.753 K
+  MAE: 20.753 K
