@@ -149,8 +149,59 @@
             padding: 24px;
             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
         }
+
+        /* MOBILE FIXES */
+        @media (max-width: 768px) {
+            .station-label-text {
+                font-size: 7px !important;
+                padding: 0px 2px !important;
+                border-radius: 2px !important;
+            }
+            .leaflet-div-icon {
+                background: transparent !important;
+                border: none !important;
+            }
+            /* Hide overlapping labels on mobile - show on tap instead */
+            .station-label {
+                display: none !important;
+            }
+            .station-marker:hover + .station-label,
+            .station-marker:active + .station-label {
+                display: block !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #map {
+                height: 40vh !important;
+                min-height: 250px;
+            }
+            #sidebar {
+                max-height: 60vh;
+                overflow-y: auto;
+            }
+            .leaflet-control-zoom {
+                margin-top: 50px !important;
+            }
+        }
+
+        /* Fix chart panel on mobile */
+        @media (max-width: 1023px) {
+            #chartPanel {
+                left: 8px !important;
+                right: 8px !important;
+                width: auto !important;
+                height: 220px !important;
+            }
+            #nationalChartPanel {
+                width: auto !important;
+                left: 8px !important;
+                right: 8px !important;
+            }
+        }
     </style>
     <base target="_blank">
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -578,19 +629,19 @@
             stations.forEach(s => {
                 const color = getColor(s.elev);
                 const marker = L.circleMarker([s.lat, s.lon], {
-                    radius: s.elev > 1000 ? 14 : s.elev > 500 ? 12 : 10,
+                    radius: window.innerWidth < 768 ? (s.elev > 1000 ? 10 : s.elev > 500 ? 8 : 6) : (s.elev > 1000 ? 14 : s.elev > 500 ? 12 : 10),
                     fillColor: color,
                     color: '#fff',
-                    weight: 3,
+                    weight: window.innerWidth < 768 ? 2 : 3,
                     opacity: 1,
                     fillOpacity: 0.9
                 }).addTo(map);
 
                 const label = L.divIcon({
                     className: 'station-label',
-                    html: `<div style="background:${color};color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.3);">${s.name}</div>`,
-                    iconSize: [80, 20],
-                    iconAnchor: [40, -8]
+                    html: `<div class="station-label-text" style="background:${color};color:#fff;padding:1px 4px;border-radius:3px;font-size:9px;font-weight:600;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.3);line-height:1.2;">${s.name}</div>`,
+                    iconSize: [60, 16],
+                    iconAnchor: [30, -6]
                 });
                 L.marker([s.lat, s.lon], { icon: label }).addTo(map);
 
@@ -602,8 +653,8 @@
                     document.getElementById('elev').value = s.elev;
                     document.getElementById('stationSelect').value = `${s.lat},${s.lon},${s.elev}`;
                     map.setView([s.lat, s.lon], 10);
-                    stations.forEach(st => st._marker && st._marker.setStyle({ weight: 3, color: '#fff' }));
-                    marker.setStyle({ weight: 4, color: '#06b6d4' });
+                    stations.forEach(st => st._marker && st._marker.setStyle({ weight: window.innerWidth < 768 ? 2 : 3, color: '#fff' }));
+                    marker.setStyle({ weight: window.innerWidth < 768 ? 3 : 4, color: '#06b6d4' });
                     if (window.innerWidth < 1024) toggleSidebar();
                 });
                 s._marker = marker;
@@ -612,7 +663,10 @@
             const legend = L.control({ position: 'bottomright' });
             legend.onAdd = function () {
                 const div = L.DomUtil.create('div');
-                div.style.cssText = 'background:rgba(15,23,42,0.95);padding:10px;border-radius:8px;color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(10px);';
+                const isMobile = window.innerWidth < 768;
+                div.style.cssText = isMobile 
+                    ? 'background:rgba(15,23,42,0.95);padding:6px;border-radius:6px;color:#94a3b8;font-size:9px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(10px);line-height:1.4;'
+                    : 'background:rgba(15,23,42,0.95);padding:10px;border-radius:8px;color:#94a3b8;font-size:11px;border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(10px);';
                 div.innerHTML = '<b style="color:#e2e8f0">Elevation</b><br><span style="color:#22c55e">●</span> Low (&lt;200m)<br><span style="color:#eab308">●</span> Medium (200-500m)<br><span style="color:#f97316">●</span> High (500-1000m)<br><span style="color:#a855f7">●</span> Very High (&gt;1000m)';
                 return div;
             };
@@ -917,7 +971,9 @@
                     }
                 });
             } catch (err) {
-                showError('Time Series Error: ' + err.message);
+                showError('Time Series: ' + err.message);
+                // Close the empty chart panel on error
+                closeChart();
             }
         }
 
