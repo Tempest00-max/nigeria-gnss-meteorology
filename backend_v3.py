@@ -106,14 +106,6 @@ MODELS = {}
 MODEL_NAMES = ['linear', 'random_forest', 'xgboost']
 DEFAULT_MODEL = 'random_forest'
 
-<<<<<<< Updated upstream
-for name in MODEL_NAMES:
-    model_file = BASE_DIR / 'models' / f'nigeria_tm_model_{name}.pkl'
-    if model_file.exists():
-        with open(model_file, 'rb') as f:
-            MODELS[name] = pickle.load(f)
-        print(f"[OK] Loaded model: {name}")
-=======
 
 class NumpyFallbackModel:
     """Pure numpy fallback model when sklearn is not available."""
@@ -201,7 +193,6 @@ for name in MODEL_NAMES:
         print(f"[INFO] Model '{name}' not found, creating fallback...")
         MODELS[name] = _create_fallback_model(name)
         print(f"[OK] Fallback model created: {name}")
->>>>>>> Stashed changes
 
 # Ensure at least one model is available
 if not MODELS:
